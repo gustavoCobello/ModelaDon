@@ -1,5 +1,5 @@
 {
- "version": 1792802470609,
+ "version": 1792803058432,
  "products": [
   {
    "nome": "teste 1",
@@ -7,7 +7,11 @@
    "categoria": "olho",
    "img": "https://i.ibb.co/rRKCRSHN/1000364854.jpg",
    "desc": "opa",
-   "model": null,
+   "model": {
+    "name": "SA.342M Gazelle.obj",
+    "ext": "obj",
+    "url": "models/p1792802404464-mvlon045.obj"
+   },
    "id": "p1792802404464"
   }
  ]
