@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modela.Don — Impressão 3D</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config={theme:{extend:{fontFamily:{display:['"Space Grotesk"','Helvetica Neue','sans-serif'],sans:['"DM Sans"','Helvetica Neue','sans-serif']},
+colors:{brand:{DEFAULT:'#6D28D9',deep:'#4C1D95',soft:'#F3EEFD'},ink:'#18181B'}}}}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:#FAFAFA;color:#18181B;margin:0;font-family:"DM Sans","Helvetica Neue",sans-serif}
+.no-sb::-webkit-scrollbar{display:none}.no-sb{scrollbar-width:none}
+:root{--ease:cubic-bezier(.22,1,.36,1)}
+button{transition:transform .3s var(--ease),background-color .25s,border-color .25s,color .25s,opacity .25s}
+button:not(:disabled):active{transform:scale(.95)}
+a{transition:color .2s}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}}
+@keyframes fade{from{opacity:0}}
+@keyframes fout{to{opacity:0}}
+@keyframes si{from{transform:translateX(100%)}}
+@keyframes so{to{transform:translateX(100%)}}
+@keyframes up{from{transform:translateY(48px);opacity:0}}
+@keyframes down{to{transform:translateY(48px);opacity:0}}
+@keyframes tick{from{opacity:0;transform:translateY(-6px)}}
+@keyframes lbl{from{opacity:0;max-width:0}to{max-width:6rem}}
+@keyframes drift{50%{transform:translateY(-10px) rotate(4deg)}}
+@keyframes toast{0%{opacity:0;transform:translateY(-14px)}12%,85%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-8px)}}
+.pg>*,.stag>*,.rise{animation:rise .55s var(--ease) backwards}
+.pg>:nth-child(2),.stag>:nth-child(2){animation-delay:.05s}
+.pg>:nth-child(3),.stag>:nth-child(3){animation-delay:.1s}
+.pg>:nth-child(4),.pg>:nth-child(5),.stag>:nth-child(4),.stag>:nth-child(5){animation-delay:.15s}
+.pg>:nth-child(n+6),.stag>:nth-child(n+6){animation-delay:.2s}
+.pg>.grid.gap-3{animation:none}
+.px>.fixed{animation:fade .25s var(--ease) backwards}
+.px[data-closing]>.fixed{animation:fout .26s ease forwards}
+.px .si{animation:si .4s var(--ease) both}
+.px[data-closing] .si{animation:so .26s cubic-bezier(.4,0,1,1) forwards}
+.px .sheet{animation:up .4s var(--ease) both}
+.px[data-closing] .sheet{animation:down .26s cubic-bezier(.4,0,1,1) forwards}
+.tick{animation:tick .3s var(--ease)}
+.lbl{animation:lbl .35s var(--ease) both;overflow:hidden;white-space:nowrap}
+.drift{animation:drift 7s ease-in-out infinite}
+.toast{animation:toast 1.4s var(--ease) both}
+.card{transition:transform .45s var(--ease),border-color .25s}
+.zoom>*{transition:transform .7s var(--ease)}
+.zoom img{animation:fade .5s var(--ease)}
+@media(hover:hover){.card:hover{transform:translateY(-3px);border-color:#C4B5FD}.card:hover .zoom>*{transform:scale(1.06)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+#pre{position:fixed;inset:0;z-index:100;background:#FAFAFA;display:grid;place-items:center;transition:opacity .45s var(--ease)}
+#pre.out{opacity:0;pointer-events:none}
+.pre-logo{font-family:'Space Grotesk','Helvetica Neue',sans-serif;font-weight:700;font-size:2rem;color:#18181B;text-align:center}
+.pre-logo .l{display:inline-block;animation:rise .6s var(--ease) backwards}.pre-logo .d{color:#6D28D9}
+.pre-ic{display:block;margin:0 auto 14px;color:#6D28D9}.pre-ic path{stroke-dasharray:100;stroke-dashoffset:100;animation:draw 1.8s var(--ease) .1s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.pre-sub{font-size:.8rem;color:#71717A;margin-top:6px;letter-spacing:.04em}.pre-n{font-size:.75rem;color:#71717A;margin-top:8px;font-variant-numeric:tabular-nums}
+.pre-bar{width:160px;height:3px;border-radius:9px;background:#E4E4E7;margin:14px auto 0;overflow:hidden}
+.pre-bar i{display:block;height:100%;background:#6D28D9;animation:preload 5s linear both}
+@keyframes preload{from{width:0}to{width:100%}}
+</style>
+</head>
+<body>
+<div id="pre"><div style="text-align:center"><svg class="pre-ic" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg><div class="pre-logo"><span class="l" style="animation-delay:0.90s">M</span><span class="l" style="animation-delay:0.98s">o</span><span class="l" style="animation-delay:1.06s">d</span><span class="l" style="animation-delay:1.14s">e</span><span class="l" style="animation-delay:1.22s">l</span><span class="l" style="animation-delay:1.30s">a</span><span class="l d" style="animation-delay:1.38s">.</span><span class="l" style="animation-delay:1.46s">D</span><span class="l" style="animation-delay:1.54s">o</span><span class="l" style="animation-delay:1.62s">n</span></div><div class="pre-sub">Impressão 3D sob demanda</div><div class="pre-bar"><i></i></div><div class="pre-n" id="pre-n">0%</div></div></div>
+<script>try{if(sessionStorage.getItem('md_seen'))document.getElementById('pre').remove()}catch(e){}</script>
+<div id="root"></div>
+<script>
+const {useState,useEffect,useRef}=React;
+const html=htm.bind(React.createElement);
+
+/* ---------- ícones (traço estilo Lucide) ---------- */
+const P={
+ bag:'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z|M3 6h18|M16 10a4 4 0 0 1-8 0',
+ search:'m21 21-4.3-4.3|M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z',
+ heart:'M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.9 0-3 .5-4.5 2-1.5-1.5-2.6-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z',
+ home:'m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z|M9 22V12h6v10',
+ user:'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2|M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z',
+ arrow:'M7 17 17 7|M7 7h10v10',
+ back:'m15 18-6-6 6-6',plus:'M5 12h14|M12 5v14',minus:'M5 12h14',x:'M18 6 6 18|M6 6l12 12',
+ box:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z|m3.3 7 8.7 5 8.7-5|M12 22V12',
+ cart:'M8 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z|M19 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z|M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12',
+ lock:'M5 11h14v10H5z|M8 11V7a4 4 0 0 1 8 0v4',
+ logout:'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4|m16 17 5-5-5-5|M21 12H9'
+};
+const Ic=({n,s=20,fill,cls=''})=>html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill=${fill?'currentColor':'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" class=${cls}>${P[n].split('|').map((d,i)=>html`<path key=${i} d=${d}/>`)}</svg>`;
+
+/* ---------- utils ---------- */
+function useLS(k,init){
+  const[v,s]=useState(()=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):init}catch{return init}});
+  useEffect(()=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}},[k,v]);
+  return[v,s];
+}
+const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const dig=s=>(s||'').replace(/\D/g,'');
+const maskCPF=s=>dig(s).slice(0,11).replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+const maskCEP=s=>dig(s).slice(0,8).replace(/(\d{5})(\d)/,'$1-$2');
+function cpfOk(c){
+  c=dig(c);if(c.length!==11||/^(\d)\1+$/.test(c))return false;
+  for(let t=9;t<11;t++){let s=0;for(let i=0;i<t;i++)s+=c[i]*(t+1-i);if((s*10%11)%10!=c[t])return false}
+  return true;
+}
+const UFS='AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
+function frete(sub,uf){
+  if(sub>=199)return 0;
+  if(uf==='SP')return 14.9;
+  if(['RJ','MG','ES','PR','SC','RS'].includes(uf))return 22.9;
+  return 34.9;
+}
+/* exporta catálogo + modelos 3D como arquivos estáticos para o deploy (fonte única de verdade para os clientes) */
+/* versão demonstrativa: sem publicação remota */
+const DATA_REPO='';
+const DEMO=[
+ {id:'d1',nome:'Action Figure Samurai',preco:89.9,categoria:'Action Figures',desc:'Miniatura de 15 cm com detalhes finos, impressa em PLA+.'},
+ {id:'d2',nome:'Suporte de Headset',preco:49.9,categoria:'Utilitários',desc:'Suporte resistente para mesa, com base antiderrapante.'},
+ {id:'d3',nome:'Vaso Geométrico Low-Poly',preco:39.9,categoria:'Decoração',desc:'Vaso facetado para suculentas e cactos.'},
+ {id:'d4',nome:'Nó Toroidal (modelo 3D)',preco:59.9,categoria:'Decoração',desc:'Peça de demonstração do visualizador 3D.',model:{name:'Nó toroidal',ext:'builtin',builtin:true,size:0}},
+];
+const RAW=DATA_REPO?'https://raw.githubusercontent.com/'+DATA_REPO.split('@')[0]+'/'+(DATA_REPO.split('@')[1]||'main')+'/':'';
+const dataUrl=u=>(/^https?:/.test(u)||!DATA_REPO)?u:RAW+u;
+const COLORS=[['Branco','#F4F4F5'],['Preto','#27272A'],['Cinza','#9CA3AF'],['Roxo','#6D28D9'],['Vermelho','#DC2626'],['Laranja','#EA580C'],['Verde','#16A34A'],['Azul','#2563EB']];
+/* modelos 3D ficam no IndexedDB (aguenta arquivos grandes, ao contrário do localStorage) */
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('modela',1);r.onupgradeneeded=()=>r.result.createObjectStore('models');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const mput=async(k,v)=>{const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('models','readwrite');t.objectStore('models').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})};
+const mget=async k=>{const d=await idb();return new Promise((res,rej)=>{const q=d.transaction('models').objectStore('models').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})};
+const mdel=async k=>{const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('models','readwrite');t.objectStore('models').delete(k);t.oncomplete=res;t.onerror=()=>rej(t.error)})};
+const bump=el=>{try{el.animate([{transform:'scale(1)'},{transform:'scale(1.35)',offset:.4},{transform:'scale(1)'}],{duration:380,easing:'cubic-bezier(.22,1,.36,1)'})}catch{}};
+const IMGBB_KEY='a04f4fad2fb8ff5ff789b1c4187e9ae3';
+
+/* ---------- base ---------- */
+function Thumb({p,s=56}){
+  const[err,setErr]=useState(false);
+  return html`<div class="zoom relative flex aspect-square w-full items-center justify-center overflow-hidden bg-[#ECECEF] text-slate-400">
+    ${p.img&&!err?html`<img src=${p.img} alt=${p.nome} class="h-full w-full object-cover" onError=${()=>setErr(true)}/>`:html`<${Ic} n="box" s=${s}/>`}${p.model&&s>=56&&html`<span class="absolute left-2 top-2 rounded-full bg-ink px-2.5 py-1 text-[11px] font-bold text-white">3D</span>`}</div>`;
+}
+const In=({l,err,...p})=>html`<label class="block text-xs font-medium text-slate-600">${l}
+  <input class="mt-1 w-full rounded-xl border ${err?'border-red-500':'border-slate-200'} bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-brand" ...${p}/>
+  ${err&&html`<span class="font-normal text-red-600">${err}</span>`}</label>`;
+const Round=({onClick,children,cls=''})=>html`<button onClick=${onClick} class="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-ink ${cls}">${children}</button>`;
+const Btn=({cls='',...p})=>html`<button class="rounded-full bg-brand px-6 py-3.5 font-bold text-white hover:bg-brand-deep ${cls}" ...${p}/>`;
+
+/* ---------- cadastro ---------- */
+function Auth({onSave,onClose,initial}){
+  const[f,setF]=useState(initial||{nome:'',cpf:'',cep:'',rua:'',numero:'',bairro:'',cidade:'',uf:''});
+  const[e,setE]=useState({});
+  const set=(k,fn=x=>x)=>ev=>setF({...f,[k]:fn(ev.target.value)});
+  const submit=ev=>{
+    ev.preventDefault();const er={};
+    if(f.nome.trim().split(/\s+/).length<2)er.nome='Informe nome e sobrenome';
+    if(!cpfOk(f.cpf))er.cpf='CPF inválido';
+    if(dig(f.cep).length!==8)er.cep='CEP inválido';
+    ['rua','numero','bairro','cidade'].forEach(k=>{if(!f[k].trim())er[k]='Obrigatório'});
+    if(!UFS.includes(f.uf))er.uf='UF inválida';
+    setE(er);if(!Object.keys(er).length)onSave({...f,nome:f.nome.trim()});
+  };
+  return html`<div class="fixed inset-0 z-[60] overflow-y-auto bg-ink/50">
+    <div class="flex min-h-full items-end justify-center sm:items-center sm:p-4">
+      <form onSubmit=${submit} class="sheet relative w-full max-w-lg space-y-3 rounded-t-3xl border border-slate-200 bg-white p-5 sm:rounded-3xl">
+        <button type="button" onClick=${onClose} class="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-slate-200"><${Ic} n="x" s=${16}/></button>
+        <h2 class="font-display text-2xl font-bold">${initial?'Editar meus dados':'Entrar'}</h2>
+        <p class="text-sm text-slate-500">Cadastre seus dados para finalizar a compra. Eles ficam salvos só neste navegador.</p>
+        <${In} l="Nome completo" value=${f.nome} err=${e.nome} onChange=${set('nome')} autoComplete="name"/>
+        <${In} l="CPF" value=${f.cpf} err=${e.cpf} inputMode="numeric" placeholder="000.000.000-00" onChange=${set('cpf',maskCPF)}/>
+        <div class="grid grid-cols-2 gap-3">
+          <${In} l="CEP" value=${f.cep} err=${e.cep} inputMode="numeric" placeholder="00000-000" onChange=${set('cep',maskCEP)}/>
+          <${In} l="Número" value=${f.numero} err=${e.numero} onChange=${set('numero')}/></div>
+        <${In} l="Rua" value=${f.rua} err=${e.rua} onChange=${set('rua')}/>
+        <${In} l="Bairro" value=${f.bairro} err=${e.bairro} onChange=${set('bairro')}/>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-2"><${In} l="Cidade" value=${f.cidade} err=${e.cidade} onChange=${set('cidade')}/></div>
+          <${In} l="UF" value=${f.uf} err=${e.uf} maxLength="2" onChange=${set('uf',x=>x.toUpperCase())}/></div>
+        <${Btn} cls="w-full">Salvar e continuar<//>
+      </form></div></div>`;
+}
+
+/* ---------- carrinho ---------- */
+function Drawer({cart,setCart,products,user,onClose,onOrder,onLogin}){
+  const[step,setStep]=useState('cart');const[pay,setPay]=useState('Pix');const[done,setDone]=useState(null);
+  const items=cart.map(c=>({...products.find(p=>p.id===c.id),q:c.q})).filter(i=>i.id);
+  const sub=items.reduce((s,i)=>s+i.preco*i.q,0);
+  const fr=user?frete(sub,user.uf):0;const total=sub+fr;
+  const chg=(id,d)=>setCart(cart.map(c=>c.id===id?{...c,q:c.q+d}:c).filter(c=>c.q>0));
+  const finish=()=>{
+    if(!cpfOk(user.cpf)||!user.nome||!user.rua){alert('Dados do cliente inválidos.');return}
+    const o={id:'MD-'+Date.now().toString().slice(-6),date:new Date().toISOString(),cliente:user,
+      itens:items.map(i=>({id:i.id,nome:i.nome,preco:i.preco,q:i.q})),subtotal:sub,frete:fr,total,pay,status:'Novo'};
+    onOrder(o);setCart([]);setDone(o);
+  };
+  return html`<div class="fixed inset-0 z-50 flex justify-end bg-ink/40" onClick=${onClose}>
+    <div class="si flex h-full w-full max-w-md flex-col bg-[#FAFAFA]" onClick=${e=>e.stopPropagation()}>
+      <div class="flex items-center justify-between p-4">
+        <h2 class="font-display text-xl font-bold">${done?'Pedido confirmado':step==='cart'?'Carrinho':'Finalizar'}</h2>
+        <${Round} onClick=${onClose}><${Ic} n="x" s=${18}/><//></div>
+      ${done?html`<div class="stag flex-1 space-y-3 p-6 pt-16 text-center">
+        <p class="font-display text-2xl font-bold">Obrigado, ${done.cliente.nome.split(' ')[0]}.</p>
+        <p class="text-slate-500">Pedido <b class="text-ink">${done.id}</b> registrado. ${brl(done.total)} via ${done.pay}.</p>
+        <${Btn} onClick=${onClose}>Continuar comprando<//></div>`
+      :items.length===0?html`<div class="grid flex-1 place-items-center text-slate-400"><div class="text-center"><${Ic} n="bag" s=${40} cls="mx-auto mb-2"/>Carrinho vazio</div></div>`
+      :html`<div key=${step} class="stag flex-1 space-y-3 overflow-y-auto px-4">
+        ${step==='cart'?items.map(i=>html`<div key=${i.id} class="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2">
+          <div class="h-20 w-20 shrink-0 overflow-hidden rounded-xl"><${Thumb} p=${i} s=${28}/></div>
+          <div class="min-w-0 flex-1"><div class="truncate text-sm font-medium">${i.nome}</div>
+            <div class="font-display font-bold">${brl(i.preco)}</div>
+            <div class="mt-1 flex items-center gap-2">
+              <button onClick=${()=>chg(i.id,-1)} class="grid h-7 w-7 place-items-center rounded-full border border-slate-200"><${Ic} n="minus" s=${14}/></button>
+              <span key=${i.q} class="tick w-5 text-center text-sm">${i.q}</span>
+              <button onClick=${()=>chg(i.id,1)} class="grid h-7 w-7 place-items-center rounded-full border border-slate-200"><${Ic} n="plus" s=${14}/></button></div></div></div>`)
+        :html`<div class="rounded-2xl border border-slate-200 bg-white p-3 text-sm"><b>Entrega</b><br/>${user.nome} · CPF ${user.cpf}<br/>
+          ${user.rua}, ${user.numero} · ${user.bairro}<br/>${user.cidade}/${user.uf} · ${user.cep}</div>
+          <div class="text-sm font-bold">Pagamento (simulado)</div>
+          <div class="grid grid-cols-3 gap-2">${['Pix','Cartão','Boleto'].map(m=>html`<button key=${m} onClick=${()=>setPay(m)}
+            class="rounded-full border py-2.5 text-sm font-medium ${pay===m?'border-brand bg-brand text-white':'border-slate-200 bg-white'}">${m}</button>`)}</div>`}
+      </div>
+      <div class="space-y-2 border-t border-slate-200 bg-white p-4">
+        <div class="flex justify-between text-sm"><span>Subtotal</span><span>${brl(sub)}</span></div>
+        <div class="flex justify-between text-sm"><span>Frete${user?' ('+user.uf+')':''}</span>${user?html`<span class=${fr===0?'font-bold text-brand':''}>${fr===0?'Grátis':brl(fr)}</span>`:html`<span class="text-slate-400">calculado no login</span>`}</div>
+        ${fr>0&&html`<div class="text-xs text-slate-500">Faltam ${brl(199-sub)} para frete grátis.</div>`}
+        <div class="flex justify-between font-display text-xl font-bold"><span>Total</span><span key=${total} class="tick">${brl(total)}</span></div>
+        ${step==='cart'?html`<${Btn} cls="w-full" onClick=${()=>user?setStep('pay'):onLogin()}>${user?'Finalizar compra':'Entrar para finalizar'}<//>`
+        :html`<div class="flex gap-2"><button onClick=${()=>setStep('cart')} class="rounded-full border border-slate-200 px-5 font-medium">Voltar</button>
+          <${Btn} cls="flex-1" onClick=${finish}>Confirmar pedido<//></div>`}
+      </div>`}
+    </div></div>`;
+}
+
+/* ---------- navegação inferior ---------- */
+function Nav({n,favsOn,logged,onHome,onFav,onCart,onUser}){
+  const Item=({ic,label,on,act,badge})=>html`<button onClick=${act} aria-label=${label} class="relative flex h-12 items-center gap-2 rounded-full px-4 font-medium ${on?'bg-brand text-white':'text-slate-500'}">
+    <${Ic} n=${ic} s=${20} fill=${on&&ic==='heart'}/>${on&&html`<span class="lbl text-sm">${label}</span>`}
+    ${badge>0&&html`<span class="absolute right-1 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-ink px-1 text-[10px] text-white">${badge}</span>`}</button>`;
+  return html`<nav class="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-md items-center justify-between rounded-full border border-slate-200 bg-white p-2" style=${{marginBottom:'env(safe-area-inset-bottom,0px)'}}>
+    <${Item} ic="home" label="Início" on=${!favsOn} act=${onHome}/>
+    <${Item} ic="cart" label="Carrinho" act=${onCart} badge=${n}/>
+    <${Item} ic="heart" label="Favoritos" on=${favsOn} act=${onFav}/>
+    <${Item} ic="user" label=${logged?'Sair':'Entrar'} act=${onUser}/></nav>`;
+}
+
+/* ---------- home ---------- */
+function Home({products,favs,fav,add,cart,favsOn,openCart}){
+  const[q,setQ]=useState('');const[cat,setCat]=useState('Todos');
+  const cats=['Todos',...new Set(products.map(p=>p.categoria))];
+  const list=products.filter(p=>(cat==='Todos'||p.categoria===cat)&&(!favsOn||favs.includes(p.id))&&p.nome.toLowerCase().includes(q.toLowerCase()));
+  const n=cart.reduce((s,c)=>s+c.q,0);
+  return html`<div class="pg mx-auto max-w-5xl px-4 pb-32">
+    <header class="flex items-center justify-between py-4">
+      <div class="font-display text-2xl font-bold">Modela<span class="text-brand">.</span>Don</div>
+      <${Round} onClick=${openCart}><${Ic} n="bag" s=${20}/>${n>0&&html`<span class="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] text-white">${n}</span>`}<//></header>
+    <label class="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-5 py-3.5 text-slate-400 transition-colors duration-300 focus-within:border-brand focus-within:text-brand">
+      <${Ic} n="search" s=${20}/><input value=${q} onChange=${e=>setQ(e.target.value)} placeholder="O que você procura?" class="w-full bg-transparent text-ink outline-none placeholder:text-slate-400"/></label>
+    <section class="relative mt-4 overflow-hidden rounded-3xl bg-brand p-5 text-white sm:p-8">
+      <div class="absolute -right-6 top-1/2 -mt-[95px] text-white/15"><div class="drift"><${Ic} n="box" s=${190}/></div></div>
+      <span class="relative inline-block rounded-full bg-ink px-3 py-1 text-xs font-medium">Frete grátis acima de R$ 199</span>
+      <h1 class="relative mt-4 max-w-[14rem] font-display text-3xl font-bold leading-tight sm:max-w-sm sm:text-5xl">Seu projeto, impresso em 3D</h1>
+      <button onClick=${()=>document.getElementById('vitrine').scrollIntoView({behavior:'smooth'})} class="group relative mt-5 flex items-center gap-3 rounded-full bg-ink py-1.5 pl-5 pr-1.5 font-bold">Ver produtos
+        <span class="grid h-10 w-10 place-items-center rounded-full bg-white text-ink transition-transform duration-300 group-hover:rotate-45"><${Ic} n="arrow" s=${18}/></span></button>
+    </section>
+    <div class="${cats.length>1?'':'hidden '}mt-8 flex items-baseline justify-between"><h2 class="font-display text-lg font-bold">Categorias</h2>
+      <button onClick=${()=>setCat('Todos')} class="text-sm text-brand">Ver tudo</button></div>
+    <div class="${cats.length>1?'':'hidden '}no-sb -mx-4 mt-3 flex gap-2 overflow-x-auto px-4">${cats.slice(1).map(c=>html`<button key=${c} onClick=${()=>setCat(cat===c?'Todos':c)}
+      class="shrink-0 rounded-2xl border px-5 py-3 text-left ${cat===c?'border-brand bg-brand-soft':'border-slate-200 bg-white'}">
+      <div class="text-sm font-medium">${c}</div><div class="text-xs text-slate-500">${products.filter(p=>p.categoria===c).length} itens</div></button>`)}</div>
+    <h2 id="vitrine" class="mt-8 font-display text-lg font-bold">${favsOn?'Favoritos':cat==='Todos'?'Novidades':cat}</h2>
+    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      ${list.map((p,i)=>html`<div key=${cat+favsOn+p.id} class="card rise overflow-hidden rounded-2xl border border-slate-200 bg-white" style=${{animationDelay:Math.min(i,12)*45+'ms'}}>
+        <a href=${'#p/'+p.id} class="relative block"><${Thumb} p=${p}/>
+          <button onClick=${e=>{e.preventDefault();bump(e.currentTarget);fav(p.id)}} aria-label="Favoritar" class="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full bg-white ${favs.includes(p.id)?'text-brand':'text-slate-400'}"><${Ic} n="heart" s=${18} fill=${favs.includes(p.id)}/></button></a>
+        <div class="p-3"><a href=${'#p/'+p.id} class="block truncate text-sm font-medium">${p.nome}</a>
+          <div class="mt-1 flex items-center justify-between"><span class="font-display text-lg font-bold">${brl(p.preco)}</span>
+            <button onClick=${e=>{bump(e.currentTarget);add(p)}} aria-label="Adicionar ao carrinho" class="grid h-9 w-9 place-items-center rounded-full bg-brand text-white hover:bg-brand-deep"><${Ic} n="plus" s=${18}/></button></div></div></div>`)}
+    </div>
+    ${list.length===0&&html`<p class="py-12 text-center text-slate-400">${products.length===0?'Estamos preparando os primeiros produtos. Volte em breve.':'Nenhum produto encontrado.'}</p>`}
+    <footer class="mt-12 text-center text-xs text-slate-400">© 2026 Modela.Don · versão demonstrativa</footer>
+  </div>`;
+}
+
+/* ---------- detalhes ---------- */
+function Detail({p,favs,fav,add,cart,openCart}){
+  const[q,setQ]=useState(1);const[view,setView]=useState(false);const n=cart.reduce((s,c)=>s+c.q,0);
+  if(!p)return html`<div class="p-10 text-center"><a href="#" class="text-brand">Produto não encontrado. Voltar</a></div>`;
+  return html`<div class="pg mx-auto max-w-xl px-4 pb-36">
+    <header class="flex items-center justify-between py-4">
+      <${Round} onClick=${()=>{location.hash=''}}><${Ic} n="back" s=${20}/><//>
+      <h1 class="font-display text-lg font-bold">Detalhes</h1>
+      <${Round} onClick=${openCart}><${Ic} n="bag" s=${20}/>${n>0&&html`<span class="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] text-white">${n}</span>`}<//></header>
+    <div class="relative overflow-hidden rounded-3xl border border-slate-200"><${Thumb} p=${p} s=${96}/>${p.model&&html`<button onClick=${()=>setView(true)} class="absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-sm font-bold text-white"><${Ic} n="box" s=${18}/>Ver em 3D</button>`}</div>
+    <div class="mt-5 flex items-start justify-between gap-3">
+      <div><div class="text-sm text-slate-500">${p.categoria}</div><h2 class="font-display text-2xl font-bold">${p.nome}</h2></div>
+      <${Round} onClick=${e=>{bump(e.currentTarget);fav(p.id)}} cls=${favs.includes(p.id)?'!text-brand':'text-slate-400'}><${Ic} n="heart" s=${20} fill=${favs.includes(p.id)}/><//></div>
+    <div class="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3">
+      <div class="flex items-center gap-3"><div class="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-brand"><${Ic} n="box" s=${22}/></div>
+        <div><div class="text-sm font-bold">Modela.Don</div><div class="text-xs text-slate-500">Loja oficial · feito sob demanda</div></div></div></div>
+    <div class="mt-5 flex items-end justify-between"><span class="text-sm text-slate-500">Quantidade</span>
+      <div class="flex items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1">
+        <button onClick=${()=>setQ(Math.max(1,q-1))} class="grid h-9 w-9 place-items-center rounded-xl border border-slate-200"><${Ic} n="minus" s=${16}/></button>
+        <span key=${q} class="tick w-9 text-center font-bold">${q}</span>
+        <button onClick=${()=>setQ(q+1)} class="grid h-9 w-9 place-items-center rounded-xl border border-slate-200"><${Ic} n="plus" s=${16}/></button></div></div>
+    <div class="mt-5 text-sm text-slate-500">Descrição</div>
+    <p class="mt-1 leading-relaxed text-slate-700">${p.desc||'Sem descrição.'}</p>
+    <div class="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-xl items-center justify-between rounded-full border border-slate-200 bg-white py-2 pl-6 pr-2" style=${{marginBottom:'env(safe-area-inset-bottom,0px)'}}>
+      <div><div class="text-xs text-slate-500">Preço total</div><div key=${q} class="tick font-display text-xl font-bold">${brl(p.preco*q)}</div></div>
+      <button onClick=${e=>{bump(e.currentTarget);add(p,q);setQ(1)}} class="flex items-center gap-2 rounded-full bg-brand px-6 py-3.5 font-bold text-white hover:bg-brand-deep"><${Ic} n="bag" s=${20}/>Adicionar</button></div>
+    <${Presence} show=${view}><${View3D} p=${p} onClose=${()=>setView(false)}/><//>
+  </div>`;
+}
+
+/* ---------- visualizador 3D ---------- */
+function Viewer3D({p,color,spin,onInteract}){
+  const box=useRef(null);const st=useRef({});const[stat,setStat]=useState('load');
+  useEffect(()=>{
+    if(!window.THREE||!THREE.OrbitControls){setStat('err:Biblioteca 3D indisponível.');return}
+    const el=box.current;let raf,dead=false;
+    const sc=new THREE.Scene();sc.background=new THREE.Color(0xE9E9EE);
+    const cam=new THREE.PerspectiveCamera(40,1,.1,100);
+    const rd=new THREE.WebGLRenderer({antialias:true});rd.setPixelRatio(Math.min(devicePixelRatio,2));
+    rd.domElement.style.display='block';el.appendChild(rd.domElement);
+    sc.add(new THREE.HemisphereLight(0xffffff,0x9a9aa8,.9));
+    const d1=new THREE.DirectionalLight(0xffffff,.8);d1.position.set(3,5,4);sc.add(d1);
+    const d2=new THREE.DirectionalLight(0xffffff,.35);d2.position.set(-4,2,-3);sc.add(d2);
+    const ctl=new THREE.OrbitControls(cam,rd.domElement);
+    ctl.enableDamping=true;ctl.dampingFactor=.08;ctl.autoRotate=true;ctl.autoRotateSpeed=1.6;
+    ctl.addEventListener('start',()=>onInteract&&onInteract());
+    st.current={ctl,target:new THREE.Color(color)};
+    const size=()=>{const w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;rd.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix()};
+    size();const ro=new ResizeObserver(size);ro.observe(el);
+    const place=obj=>{
+      obj.updateMatrixWorld(true);
+      const b=new THREE.Box3().setFromObject(obj),c=b.getCenter(new THREE.Vector3()),s=b.getSize(new THREE.Vector3());
+      obj.position.sub(c);const g=new THREE.Group();g.add(obj);g.scale.setScalar(2/Math.max(s.x,s.y,s.z));sc.add(g);
+      cam.position.set(2.6,1.6,3.2);ctl.target.set(0,0,0);ctl.update();
+    };
+    (async()=>{
+      try{
+        const m=p.model;let obj;
+        const mat=new THREE.MeshStandardMaterial({color:st.current.target.clone(),roughness:.55,metalness:0,side:THREE.DoubleSide});
+        st.current.mat=mat;
+        if(m.builtin)obj=new THREE.Mesh(new THREE.TorusKnotGeometry(.7,.25,160,24),mat);
+        else{
+          let buf;
+          if(m.url){const r=await fetch(dataUrl(m.url));if(!r.ok)throw new Error('Modelo não encontrado no servidor ('+r.status+').');buf=await r.arrayBuffer()}
+          else{const rec=await mget(p.id);if(!rec)throw new Error('Arquivo do modelo não encontrado neste navegador.');buf=await rec.arrayBuffer()}
+          
+          if(m.ext==='stl'){const g=new THREE.STLLoader().parse(buf);g.computeVertexNormals();obj=new THREE.Mesh(g,mat);obj.rotation.x=-Math.PI/2}
+          else{obj=new THREE.OBJLoader().parse(new TextDecoder().decode(buf));obj.traverse(o=>{if(o.isMesh){o.material=mat;if(!o.geometry.attributes.normal)o.geometry.computeVertexNormals()}})}
+        }
+        if(dead)return;place(obj);setStat('ok');
+      }catch(e){if(!dead)setStat('err:'+(e.message||'Não foi possível abrir o modelo.'))}
+    })();
+    const loop=()=>{raf=requestAnimationFrame(loop);const s=st.current;if(s.mat)s.mat.color.lerp(s.target,.12);ctl.update();rd.render(sc,cam)};
+    loop();
+    return()=>{dead=true;cancelAnimationFrame(raf);ro.disconnect();ctl.dispose();rd.dispose();if(rd.domElement.parentNode)rd.domElement.parentNode.removeChild(rd.domElement)};
+  },[p.id]);
+  useEffect(()=>{if(st.current.target)st.current.target.set(color)},[color]);
+  useEffect(()=>{if(st.current.ctl)st.current.ctl.autoRotate=spin},[spin]);
+  return html`<div class="absolute inset-0"><div ref=${box} class="absolute inset-0"></div>
+    ${stat==='load'&&html`<div class="absolute inset-0 grid place-items-center text-sm text-slate-500">Carregando modelo...</div>`}
+    ${stat.startsWith('err')&&html`<div class="absolute inset-0 grid place-items-center p-6 text-center text-sm text-red-600">${stat.slice(4)}</div>`}</div>`;
+}
+function View3D({p,onClose}){
+  const[ci,setCi]=useState(3);const[spin,setSpin]=useState(true);
+  return html`<div class="fixed inset-0 z-[55] flex flex-col bg-[#FAFAFA]">
+    <div class="flex items-center justify-between p-4"><div class="min-w-0"><div class="truncate font-display text-lg font-bold">${p.nome}</div><div class="text-xs text-slate-500">Visualização 3D</div></div>
+      <${Round} onClick=${onClose}><${Ic} n="x" s=${18}/><//></div>
+    <div class="relative mx-4 flex-1 overflow-hidden rounded-3xl border border-slate-200">
+      <${Viewer3D} p=${p} color=${COLORS[ci][1]} spin=${spin} onInteract=${()=>setSpin(false)}/>
+      <div class="pointer-events-none absolute left-3 top-3 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500">Arraste para girar · pinça ou role para zoom</div>
+      <button onClick=${()=>setSpin(!spin)} class="absolute bottom-3 right-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium">${spin?'Pausar giro':'Girar sozinho'}</button></div>
+    <div class="p-4 pb-6"><div class="mb-2 text-sm text-slate-500">Cor do filamento: <b class="text-ink">${COLORS[ci][0]}</b></div>
+      <div class="no-sb flex gap-3 overflow-x-auto py-1">${COLORS.map(([n,c],i)=>html`<button key=${n} onClick=${()=>setCi(i)} aria-label=${n} class="h-11 w-11 shrink-0 rounded-full border-2 ${ci===i?'border-brand':'border-slate-200'}" style=${{background:c,boxShadow:ci===i?'inset 0 0 0 3px #FAFAFA':'none'}}></button>`)}</div></div></div>`;
+}
+
+/* ---------- presença (animação de saída) ---------- */
+function Presence({show,children}){
+  const[mounted,setM]=useState(show);const ref=useRef(children);
+  if(show)ref.current=children;
+  useEffect(()=>{if(show){setM(true);return}const t=setTimeout(()=>setM(false),270);return()=>clearTimeout(t)},[show]);
+  if(!mounted&&!show)return null;
+  return html`<div class="contents px" data-closing=${show?undefined:''}>${ref.current}</div>`;
+}
+
+/* ---------- perfil ---------- */
+function Profile({user,orders,onClose,onEdit,onLogout,onFavs}){
+  const[sure,setSure]=useState(false);
+  const mine=orders.filter(o=>o.cliente&&o.cliente.cpf===user.cpf);
+  const Row=({ic,label,act})=>html`<button onClick=${act} class="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left font-medium"><span class="flex items-center gap-3"><${Ic} n=${ic} s=${20}/>${label}</span><${Ic} n="arrow" s=${16} cls="text-slate-400"/></button>`;
+  return html`<div class="fixed inset-0 z-50 flex justify-end bg-ink/40" onClick=${onClose}>
+    <div class="si flex h-full w-full max-w-md flex-col bg-[#FAFAFA]" onClick=${e=>e.stopPropagation()}>
+      <div class="flex items-center justify-between p-4"><h2 class="font-display text-xl font-bold">Minha conta</h2>
+        <${Round} onClick=${onClose}><${Ic} n="x" s=${18}/><//></div>
+      <div class="stag flex-1 space-y-3 overflow-y-auto px-4 pb-6">
+        <div class="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <div class="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-brand font-display text-xl font-bold text-white">${user.nome[0].toUpperCase()}</div>
+          <div class="min-w-0 text-sm"><div class="truncate text-base font-bold">${user.nome}</div>
+            <div class="text-slate-500">CPF ${user.cpf}</div>
+            <div class="text-slate-500">${user.rua}, ${user.numero} · ${user.bairro}</div>
+            <div class="text-slate-500">${user.cidade}/${user.uf} · ${user.cep}</div></div></div>
+        <${Row} ic="user" label="Editar meus dados" act=${onEdit}/>
+        <${Row} ic="heart" label="Meus favoritos" act=${onFavs}/>
+        <h3 class="pt-3 font-display font-bold">Meus pedidos (${mine.length})</h3>
+        ${mine.length===0&&html`<p class="text-sm text-slate-400">Você ainda não fez pedidos.</p>`}
+        ${mine.map(o=>html`<div key=${o.id} class="space-y-1 rounded-2xl border border-slate-200 bg-white p-3 text-sm">
+          <div class="flex items-center justify-between"><b class="font-display">${o.id}</b><span class="rounded-full border border-slate-200 px-3 py-0.5 text-xs">${o.status}</span></div>
+          <div class="text-xs text-slate-500">${new Date(o.date).toLocaleDateString('pt-BR')} · ${o.pay}</div>
+          <div class="truncate">${o.itens.map(i=>i.q+'× '+i.nome).join(', ')}</div>
+          <div class="font-display font-bold">${brl(o.total)}</div></div>`)}
+      </div>
+      <div class="space-y-2 border-t border-slate-200 bg-white p-4">
+        ${!sure?html`<button onClick=${()=>setSure(true)} class="flex w-full items-center justify-center gap-2 rounded-full border border-red-200 py-3 font-medium text-red-600"><${Ic} n="logout" s=${18}/>Sair da conta</button>`
+        :html`<p class="text-center text-sm text-slate-500">Seus dados cadastrais serão removidos deste navegador.</p>
+          <div class="flex gap-2"><button onClick=${()=>setSure(false)} class="flex-1 rounded-full border border-slate-200 py-3 font-medium">Cancelar</button>
+          <button onClick=${onLogout} class="flex-1 rounded-full bg-red-600 py-3 font-bold text-white">Confirmar saída</button></div>`}
+      </div></div></div>`;
+}
+
+/* ---------- app ---------- */
+function App(){
+  const[user,setUser]=useLS('md_user',null);
+  const[products,setProducts]=useLS('md_products',DEMO);
+  const[cart,setCart]=useLS('md_cart',[]);
+  const[orders,setOrders]=useLS('md_orders',[]);
+  const[favs,setFavs]=useLS('md_favs',[]);
+  const[open,setOpen]=useState(false);const[showAuth,setShowAuth]=useState(false);const[showProfile,setShowProfile]=useState(false);
+  const[favsOn,setFavsOn]=useState(false);const[toast,setToast]=useState('');
+  const[hash,setHash]=useState(location.hash);
+  useEffect(()=>{const h=()=>{setHash(location.hash);scrollTo(0,0)};addEventListener('hashchange',h);return()=>removeEventListener('hashchange',h)},[]);
+  const add=(p,q=1)=>{
+    setCart(c=>c.find(x=>x.id===p.id)?c.map(x=>x.id===p.id?{...x,q:x.q+q}:x):[...c,{id:p.id,q}]);
+    setToast(p.nome+' adicionado');setTimeout(()=>setToast(''),1400);
+  };
+  const fav=id=>setFavs(f=>f.includes(id)?f.filter(x=>x!==id):[...f,id]);
+  useEffect(()=>{
+    fetch(DATA_REPO?RAW+'catalog.json?v='+Math.floor(Date.now()/20000):'catalog.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>{
+      if(!c||!Array.isArray(c.products))return;
+      if(localStorage.getItem('md_catver')===String(c.version))return;
+      setProducts(c.products);try{localStorage.setItem('md_catver',String(c.version))}catch{}
+    }).catch(()=>{});
+  },[]);
+  useEffect(()=>{const t=requestAnimationFrame(()=>document.querySelectorAll('span[class*="min-w-"]').forEach(bump));return()=>cancelAnimationFrame(t)},[cart]);
+  const isP=hash.startsWith('#p/');
+  const common={favs,fav,add,cart,openCart:()=>setOpen(true)};
+  return html`<div>
+    ${isP?html`<${Detail} p=${products.find(p=>p.id===hash.slice(3))} ...${common}/>`
+    :html`<${Home} products=${products} favsOn=${favsOn} ...${common}/>
+      <${Nav} n=${cart.reduce((s,c)=>s+c.q,0)} favsOn=${favsOn} logged=${!!user}
+        onHome=${()=>{setFavsOn(false);scrollTo(0,0)}} onFav=${()=>setFavsOn(true)} onCart=${()=>setOpen(true)}
+        onUser=${()=>user?setShowProfile(true):setShowAuth(true)}/>`}
+    ${toast&&html`<div class="pointer-events-none fixed inset-x-0 top-4 z-[70] flex justify-center"><div class="toast rounded-full bg-ink px-4 py-2 text-sm text-white">${toast}</div></div>`}
+    <${Presence} show=${showAuth}><${Auth} initial=${user||undefined} onSave=${u=>{setUser(u);setShowAuth(false)}} onClose=${()=>setShowAuth(false)}/><//>
+    
+    <${Presence} show=${showProfile&&!!user}><${Profile} user=${user||{}} orders=${orders} onClose=${()=>setShowProfile(false)} onEdit=${()=>{setShowProfile(false);setShowAuth(true)}} onFavs=${()=>{setShowProfile(false);setFavsOn(true)}} onLogout=${()=>{setUser(null);setShowProfile(false)}}/><//>
+    <${Presence} show=${open}><${Drawer} ...${{cart,setCart,products,user}} onClose=${()=>setOpen(false)} onLogin=${()=>setShowAuth(true)} onOrder=${o=>setOrders([o,...orders])}/><//>
+  </div>`;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App}/>`);
+(()=>{const p=document.getElementById('pre');if(!p)return;const n=document.getElementById('pre-n'),T=5000,t0=performance.now();
+const tick=t=>{const k=Math.min(1,(t-t0)/T);n.textContent=Math.round(k*100)+'%';if(k<1)requestAnimationFrame(tick)};requestAnimationFrame(tick);
+Promise.all([document.fonts?document.fonts.ready:0,new Promise(r=>setTimeout(r,T))]).then(()=>{try{sessionStorage.setItem('md_seen','1')}catch(e){}p.classList.add('out');setTimeout(()=>p.remove(),500)})})();
+</script>
+</body>
+</html>
