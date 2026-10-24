@@ -1,5 +1,5 @@
 {
- "version": 1792803058432,
+ "version": 1792803179444,
  "products": [
   {
    "nome": "teste 1",
@@ -13,6 +13,20 @@
     "url": "models/p1792802404464-mvlon045.obj"
    },
    "id": "p1792802404464"
+  },
+  {
+   "nome": "teste 2",
+   "preco": 67,
+   "categoria": "Outros",
+   "img": "https://i.ibb.co/2Yc4ywBY/1000353736.webp",
+   "desc": "",
+   "model": {
+    "name": "Exemplo (nó toroidal)",
+    "ext": "builtin",
+    "builtin": true,
+    "size": 0
+   },
+   "id": "p1792803176244"
   }
  ]
 }
